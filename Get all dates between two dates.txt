@@ -1,0 +1,22 @@
+    DECLARE @FromDate DATETIME
+    DECLARE @ToDate DATETIME
+	
+	DECLARE @TOTALCount INT
+    SET @FromDate = '2017-01-01'
+	SET @ToDate = '2018-08-21'
+
+    Select  @TOTALCount= DATEDIFF(DD,@FromDate,@ToDate);
+
+    WITH d AS 
+            (
+              SELECT top (@TOTALCount) AllDays = DATEADD(DAY, ROW_NUMBER() 
+                OVER (ORDER BY object_id), REPLACE(@FromDate,'-',''))
+              FROM sys.all_objects
+            )
+        SELECT rtrim(ltrim(replace(cast(AllDays as date),'-',''))) as Datem, 'N' as FlagStatus
+		into _temp_dates
+		From d
+        
+    RETURN 
+
+
