@@ -1,0 +1,36 @@
+GO
+
+CREATE PROC support_KillBlockingProcesses
+(
+@RecursiveCount int = NULL
+)
+
+AS
+
+declare @count int, @spid int, @sql nvarchar(max)
+set @count = ISNULL(@RecursiveCount, 3)
+
+while @count > 0
+begin
+
+begin try
+set @spid = (
+select top 1 spid from sysprocesses (nolock) where blocked = 0 and spid in (
+select blocked from sysprocesses (nolock) where blocked <> 0
+)
+)
+if @spid > 50
+begin
+set @sql = N'kill ' + cast(@spid as nvarchar(100))
+exec sp_executesql @sql
+--print @sql
+end
+end try
+begin catch
+--print 'error'
+end catch
+
+set @count = @count - 1
+end
+
+Go

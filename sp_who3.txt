@@ -1,0 +1,236 @@
+USE master
+GO
+sp_configure 'allow updates', 1
+RECONFIGURE WITH OVERRIDE
+GO
+IF object_id('sp_who3') IS NOT NULL
+
+
+    BEGIN
+    	DROP PROC sp_who3
+END
+GO
+CREATE PROC sp_who3
+	@SORTBY		VARCHAR(30) = NULL
+AS
+
+
+    BEGIN
+    	
+    	SET NOCOUNT ON
+    	
+    	SET @SORTBY = UPPER(@SORTBY)
+    	IF @SORTBY = 'HELP'
+    	BEGIN
+    		PRINT 'Possible parameters are : SPID, STATUS, LOGINNAME, HOSTNAME, BLOCKED, DBNAME, CMD'
+    		PRINT ' CPU, DISKIO, MEMUSAGE, OPENTRANS, LASTBATCH, LOGINTIME'
+    		PRINT ' PROGRAMNAME, EVENTINFO'
+    		PRINT ' OR include a number AND it will display ONLY that spid'
+    		RETURN 16
+    	END
+    	
+    	-- NULL, CMD, CPU, DISKIO, LASTBATCH, DBNAME
+    	--DECLARE @SORTBY		VARCHAR(30)
+    	--SET	@SORTBY		= NULL --'CPU'
+    	
+    	DECLARE @sp_who3 table(
+    		spid		INT		NOT NULL,
+    		status		VARCHAR(255)	NOT NULL,
+    		loginname	VARCHAR(255)	NOT NULL,
+    		hostname	VARCHAR(255)	NULL,
+    		blocked		INT		NOT NULL,
+    		dbname		VARCHAR(255)	NULL,
+    		cmd		VARCHAR(255)	NOT NULL,
+    		cpu		BIGINT		NOT NULL,
+    		diskio		BIGINT		NOT NULL,
+    		memusage	BIGINT		NOT NULL,
+    		opentrans	INT		NOT NULL,
+    		lastbatch	DATETIME	NOT NULL,
+    		logintime	DATETIME	NOT NULL,
+    		programname	VARCHAR(255)	NULL,
+    		eventinfo	VARCHAR(255)	NULL
+    	)
+    	
+    	
+    	CREATE TABLE #inputbuffer (
+    		EventType	varchar(255),
+    		Parameters	int,
+    		EventInfo	varchar(255)
+    	)
+    	
+    	SET @SORTBY = NULLIF(RTRIM(LTRIM(UPPER(@SORTBY))), '')
+    	
+    	
+    	INSERT INTO @sp_who3 (	spid,
+    				status,
+    				loginname,
+    				hostname,
+    				blocked,
+    				dbname,
+    				cmd,
+    				cpu,
+    				diskio,
+    				memusage,
+    				opentrans,
+    				lastbatch,
+    				logintime,
+    				programname)
+    	SELECT	sp.spid,
+    		sp.status,
+    		sp.loginame,
+    		nullif(rtrim(ltrim(sp.hostname)), ''),
+    		sp.blocked,
+    		sd.name,
+    		sp.cmd,
+    		sp.cpu,
+    		sp.physical_io,
+    		sp.memusage,
+    		sp.open_tran,
+    		sp.last_batch,
+    		sp.login_time,
+    		nullif(rtrim(ltrim(sp.program_name)), '')
+    	FROM master..sysprocesses sp
+    		LEFT OUTER JOIN master..sysdatabases sd ON sd.dbid = sp.dbid
+    	
+    	DECLARE	@spid		varchar(30),
+    		@fetch_status	int
+    	
+    	DECLARE dbcc_inputbuffer CURSOR FOR
+    	SELECT CONVERT(VARCHAR(30), spid)
+    	FROM @sp_who3
+    	
+    	OPEN dbcc_inputbuffer
+    	
+    	FETCH NEXT FROM dbcc_inputbuffer 
+    	INTO @spid
+    	
+    	SET @fetch_status = @@fetch_status
+    	
+    	WHILE @fetch_status = 0
+    	BEGIN
+    	
+    		INSERT INTO #inputbuffer
+    		exec('dbcc inputbuffer(' + @spid + ')')
+    	
+    		UPDATE @sp_who3
+    		SET eventinfo = (SELECT EventInfo FROM #inputbuffer)
+    		WHERE spid = @spid
+    	
+    		TRUNCATE TABLE #inputbuffer
+    	
+    		FETCH NEXT FROM dbcc_inputbuffer 
+    		INTO @spid
+    		
+    		SET @fetch_status = @@fetch_status
+    	END
+    	DROP TABLE #inputbuffer
+    	
+    	IF @SORTBY IS NULL
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY spid
+    	END
+    	ELSE IF @SORTBY = 'SPID'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY spid
+    	END
+    	ELSE IF @SORTBY = 'STATUS'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY status
+    	END
+    	ELSE IF @SORTBY = 'LOGINNAME'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY loginname
+    	END
+    	ELSE IF @SORTBY = 'HOSTNAME'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY hostname
+    	END
+    	ELSE IF @SORTBY = 'BLOCKED'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY blocked
+    	END
+    	ELSE IF @SORTBY = 'DBNAME'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY dbname
+    	END
+    	ELSE IF @SORTBY = 'CMD'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY cmd
+    	END
+    	ELSE IF @SORTBY = 'CPU'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY cpu
+    	END
+    	ELSE IF @SORTBY = 'DISKIO'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY diskio
+    	END
+    	ELSE IF @SORTBY = 'MEMUSAGE'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY memusage
+    	END
+    	ELSE IF @SORTBY = 'OPENTRANS'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY opentrans
+    	END
+    	ELSE IF @SORTBY = 'LASTBATCH'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY lastbatch
+    	END
+    	ELSE IF @SORTBY = 'LOGINTIME'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY logintime
+    	END
+    	ELSE IF @SORTBY = 'PROGRAMNAME'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY programname
+    	END
+    	ELSE IF @SORTBY = 'EVENTINFO'
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		ORDER BY eventinfo
+    	END
+    	ELSE IF isnumeric(@SORTBY) = 1
+    	BEGIN
+    		SELECT *
+    		FROM @sp_who3
+    		WHERE spid = convert(int, @SORTBY)
+    	END
+    	RETURN 0
+END
+GO
+sp_configure 'allow updates', 0
+RECONFIGURE WITH OVERRIDE
+GO
+

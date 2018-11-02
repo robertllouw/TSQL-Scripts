@@ -1,0 +1,7 @@
+Select d.name as 'DatabaseName', spid,  p.status, cmd, 
+        p.loginame, nt_username, hostname, program_name, 
+        cpu, physical_io, memusage, blocked
+  from master.dbo.sysprocesses p (nolock)
+  join master.dbo.sysdatabases d (nolock)
+    on p.dbid = d.dbid
+order by physical_io desc
