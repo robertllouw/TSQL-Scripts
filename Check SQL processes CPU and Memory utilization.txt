@@ -1,0 +1,45 @@
+
+select cmd, PROGRAM_NAME, NT_USERNAME, * from sysprocesses
+where status not in ('sleeping','background')
+------- This section of code is used to show the memory usage in the various resource pools
+;WITH    cte
+  AS ( SELECT   RP.pool_id ,
+  RP.Name ,
+  RP.min_memory_percent ,
+  RP.max_memory_percent ,
+  CAST (RP.max_memory_kb / 1024. / 1024. 
+    AS NUMERIC(12, 2)) AS max_memory_gb ,
+  CAST (RP.used_memory_kb / 1024. / 1024. 
+    AS NUMERIC(12, 2)) AS used_memory_gb ,
+  CAST (RP.target_memory_kb / 1024. / 1024. 
+    AS NUMERIC(12,2)) AS target_memory_gb,
+  CAST (SI.committed_target_kb / 1024. / 1024. 
+    AS NUMERIC(12, 2)) AS committed_target_kb 
+    FROM     sys.dm_resource_governor_resource_pools RP
+    CROSS JOIN sys.dm_os_sys_info SI
+  )
+SELECT  c.pool_id ,
+  c.Name ,
+  c.min_memory_percent ,
+  c.max_memory_percent ,
+  c.max_memory_gb ,
+  c.used_memory_gb ,
+  c.target_memory_gb ,  
+  CAST(c.committed_target_kb  *
+  CASE WHEN c.committed_target_kb <= 8 THEN 0.7
+    WHEN c.committed_target_kb < 16 THEN 0.75
+    WHEN c.committed_target_kb < 32 THEN 0.8
+    WHEN c.committed_target_kb <= 96 THEN 0.85
+    WHEN c.committed_target_kb > 96 THEN 0.9
+  END * c.max_memory_percent /100 AS NUMERIC(12,2))
+   AS [Max_for_InMemory_Objects_gb]
+FROM    cte c
+ 
+ 
+------------This section of code is used to show the memory usage on the server
+SELECT total_physical_memory_kb / 1024 AS total_physical_memory_mb ,
+available_physical_memory_kb / 1024 AS available_physical_memory_mb ,
+total_page_file_kb / 1024 AS total_page_file_mb ,
+available_page_file_kb / 1024 AS available_page_file_mb ,
+system_memory_state_desc
+FROM sys.dm_os_sys_memory

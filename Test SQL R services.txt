@@ -1,0 +1,18 @@
+EXEC sp_execute_external_script
+  @language =N'R',
+  @script=N'OutputDataSet<-InputDataSet',
+  @input_data_1 =N'SELECT 1 AS hello'
+  WITH RESULT SETS (([hello] int not null));
+
+declare @v varchar(100);
+exec sp_execute_external_script @language=N'R'
+, @script = N'v <- toString(getRversion())'
+, @params = N'@v varchar(100) output'
+, @v = @v out;
+
+print @v;
+
+EXEC sp_execute_external_script  @language =N'R',
+@script=N'
+myvar <- version$version.string
+OutputDataSet <- as.data.frame(myvar);'
